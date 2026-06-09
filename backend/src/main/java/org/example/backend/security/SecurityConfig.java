@@ -36,6 +36,15 @@ public class SecurityConfig {
                         // OPEN DOORS: Anyone can register or login
                         .requestMatchers("/api/users/register", "/api/users/login").permitAll()
 
+                        // ADMIN ONLY: System administration and analytics
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        // CITIZENS: Access to citizen complaints
+                        .requestMatchers("/api/complaints/citizen/**").hasAnyRole("CITIZEN", "ADMIN")
+
+                        // OFFICERS: Access to department complaints
+                        .requestMatchers("/api/complaints/department/**").hasAnyRole("OFFICER", "ADMIN")
+
                         // LOCKED DOORS: Everything else requires a valid token
                         .anyRequest().authenticated()
                 )

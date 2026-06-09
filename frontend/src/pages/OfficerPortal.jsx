@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ShieldCheck, ListTodo, Megaphone, Activity, CheckCircle, ChevronDown } from 'lucide-react';
+import { ShieldCheck, ListTodo, Megaphone, Activity, CheckCircle, ChevronDown, XCircle } from 'lucide-react';
 import QueueManagementTab from '../components/officer/QueueManagementTab';
-import CommunityBroadcastTab from '../components/officer/QueueManagementTab'; // Ensure you have this from earlier!
+import CommunityBroadcastTab from '../components/officer/CommunityBroadcastTab';
 import { getDepartmentComplaints, getMyDepartments } from '../services/api.jsx';
 import { useAuth } from '../context/AuthContext';
 import { usePortal } from '../context/PortalContext';
@@ -11,7 +11,7 @@ const OfficerPortal = () => {
     const { userName } = useAuth();
     const { setPortal } = usePortal();
     const [activeTab, setActiveTab] = useState('queue');
-    const [stats, setStats] = useState({ total: 0, resolved: 0, pending: 0 });
+    const [stats, setStats] = useState({ total: 0, resolved: 0, pending: 0, rejected: 0 });
 
     // Dynamic Department States
     const [myDepartments, setMyDepartment] = useState([]);
@@ -52,7 +52,8 @@ const OfficerPortal = () => {
                 setStats({
                     total: complaints.length,
                     resolved: complaints.filter(c => c.status === 'RESOLVED').length,
-                    pending: complaints.filter(c => c.status === 'OPEN' || c.status === 'IN_PROGRESS').length
+                    pending: complaints.filter(c => c.status === 'OPEN' || c.status === 'IN_PROGRESS').length,
+                    rejected: complaints.filter(c => c.status === 'REJECTED').length
                 });
             } catch (error) {
                 console.error("Failed to fetch stats", error);
@@ -98,6 +99,11 @@ const OfficerPortal = () => {
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
                     <span className="text-white font-bold text-xs">{stats.resolved}</span>
                     <span className="text-slate-400 text-[10px]">resolved</span>
+                </div>
+                <div className="bg-slate-800/80 border border-slate-700 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
+                    <XCircle className="w-3.5 h-3.5 text-red-400" />
+                    <span className="text-white font-bold text-xs">{stats.rejected}</span>
+                    <span className="text-slate-400 text-[10px]">rejected</span>
                 </div>
             </div>
         </>

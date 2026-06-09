@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo } from "react";
-import { getAllComplaints, createDepartment, getAllDepartments, registerOfficer } from "../services/api.jsx";
-import { AlertCircle, BarChart3, CheckCircle, Users, Shield, Building2, UserPlus, CheckCircle2 } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { createDepartment, getAllDepartments, registerOfficer } from "../services/api.jsx";
+import { AlertCircle, BarChart3, Building2, UserPlus, CheckCircle2 } from "lucide-react";
 import { useAuth } from '../context/AuthContext';
 import { usePortal } from '../context/PortalContext';
 import TabBar from '../components/shared/TabBar';
+import AdminAnalyticsTab from '../components/admin/AdminAnalyticsTab';
 
 const AdminDashboard = () => {
     const { setPortal } = usePortal();
@@ -12,7 +12,6 @@ const AdminDashboard = () => {
     const [activeTab, setActiveTab] = useState('analytics'); // Default to your awesome charts!
 
     // Data States
-    const [complaints, setComplaints] = useState([]);
     const [departments, setDepartments] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -31,12 +30,7 @@ const AdminDashboard = () => {
 
     const fetchAllData = async () => {
         try {
-            // Fetch both complaints (for your charts) and departments (for the forms) at once!
-            const [complaintsRes, deptsRes] = await Promise.all([
-                getAllComplaints(),
-                getAllDepartments()
-            ]);
-            setComplaints(complaintsRes.data);
+            const deptsRes = await getAllDepartments();
             setDepartments(deptsRes.data);
         } catch (error) {
             console.error("Failed to fetch dashboard data", error);
@@ -45,42 +39,16 @@ const AdminDashboard = () => {
         }
     };
 
-    // --- Analytics Processing (From your original file) ---
-    const totalComplaints = complaints.length;
-    const resolvedComplaints = complaints.filter(c => c.status === 'RESOLVED').length;
-    const openComplaints = complaints.filter(c => c.status === 'OPEN' || c.status === 'IN_PROGRESS').length;
-
-    const departmentData = complaints.reduce((acc, complaint) => {
-        const deptName = complaint.departmentName || 'Unknown';
-        const existingDept = acc.find(d => d.name === deptName)
-        if (existingDept) {
-            existingDept.count += 1;
-        } else {
-            acc.push({name: deptName, count: 1});
-        }
-        return acc;
-    }, []);
-
     // --- Inject portal content into Navbar ---
     const portalContent = useMemo(() => (
         <div className="flex items-center gap-1.5">
             <div className="bg-slate-800/80 border border-slate-700 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
-                <Users className="w-3.5 h-3.5 text-blue-400" />
-                <span className="text-white font-bold text-xs">{totalComplaints}</span>
-                <span className="text-slate-400 text-[10px]">total</span>
-            </div>
-            <div className="bg-slate-800/80 border border-slate-700 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-white font-bold text-xs">{openComplaints}</span>
-                <span className="text-slate-400 text-[10px]">pending</span>
-            </div>
-            <div className="bg-slate-800/80 border border-slate-700 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
-                <CheckCircle className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-white font-bold text-xs">{resolvedComplaints}</span>
-                <span className="text-slate-400 text-[10px]">resolved</span>
+                <Building2 className="w-3.5 h-3.5 text-blue-400" />
+                <span className="text-white font-bold text-xs">{departments.length}</span>
+                <span className="text-slate-400 text-[10px]">departments</span>
             </div>
         </div>
-    ), [totalComplaints, openComplaints, resolvedComplaints]);
+    ), [departments.length]);
 
     useEffect(() => {
         if (!loading) {
@@ -175,57 +143,7 @@ const AdminDashboard = () => {
                         </p>
                     </div>
 
-                    {/* === TAB 1: YOUR ORIGINAL ANALYTICS === */}
-                    {activeTab === 'analytics' && (
-                        <div className="animate-in fade-in duration-300">
-                            {/* Top Level Metric Cards */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-t-4 border-t-blue-600">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-sm font-medium text-slate-500 mb-1">Total Grievances</p>
-                                            <h3 className="text-3xl font-bold text-slate-800">{totalComplaints}</h3>
-                                        </div>
-                                        <div className="p-3 bg-blue-50 rounded-lg"><Users className="w-6 h-6 text-blue-600" /></div>
-                                    </div>
-                                </div>
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-t-4 border-t-amber-500">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-sm font-medium text-slate-500 mb-1">Active / Pending</p>
-                                            <h3 className="text-3xl font-bold text-slate-800">{openComplaints}</h3>
-                                        </div>
-                                        <div className="p-3 bg-amber-50 rounded-lg"><AlertCircle className="w-6 h-6 text-amber-600" /></div>
-                                    </div>
-                                </div>
-                                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 border-t-4 border-t-emerald-500">
-                                    <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="text-sm font-medium text-slate-500 mb-1">Successfully Resolved</p>
-                                            <h3 className="text-3xl font-bold text-slate-800">{resolvedComplaints}</h3>
-                                        </div>
-                                        <div className="p-3 bg-emerald-50 rounded-lg"><CheckCircle className="w-6 h-6 text-emerald-600" /></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Recharts Visualization */}
-                            <div className="bg-white p-8 rounded-xl shadow-sm border border-slate-200">
-                                <h3 className="text-xl font-bold text-slate-800 mb-8">Grievances by Department</h3>
-                                <div className="h-96 w-full">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={departmentData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 14 }} />
-                                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b' }} />
-                                            <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                                            <Bar dataKey="count" fill="#2563eb" radius={[4, 4, 0, 0]} barSize={40} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {activeTab === 'analytics' && <AdminAnalyticsTab />}
 
                     {/* === TAB 2: DEPARTMENTS (50/50 Split) === */}
                     {activeTab === 'departments' && (

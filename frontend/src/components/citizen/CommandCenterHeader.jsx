@@ -1,8 +1,9 @@
-import { Activity, CheckCircle } from 'lucide-react';
+import { Activity, CheckCircle, XCircle } from 'lucide-react';
 
 const CommandCenterHeader = ({ citizenName, complaints = [] }) => {
     const totalFiled = complaints.length;
     const totalResolved = complaints.filter(c => c.status === 'RESOLVED').length;
+    const totalRejected = complaints.filter(c => c.status === 'REJECTED').length;
 
     return (
         // 1. Changed background to a distinct deep midnight slate and added border-b
@@ -48,6 +49,17 @@ const CommandCenterHeader = ({ citizenName, complaints = [] }) => {
                         <div>
                             <div className="text-2xl font-bold text-white leading-none">{totalResolved}</div>
                             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">Resolved</div>
+                        </div>
+                    </div>
+
+                    {/* Rejected Card */}
+                    <div className="bg-slate-800/60 backdrop-blur shadow-sm border border-slate-700/50 px-5 py-3 rounded-xl flex items-center gap-4 flex-1 md:flex-none">
+                        <div className="p-2 bg-red-500/10 rounded-lg">
+                            <XCircle className="w-5 h-5 text-red-400" />
+                        </div>
+                        <div>
+                            <div className="text-2xl font-bold text-white leading-none">{totalRejected}</div>
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">Rejected</div>
                         </div>
                     </div>
 

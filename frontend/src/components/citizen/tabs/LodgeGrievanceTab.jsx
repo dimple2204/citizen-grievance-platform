@@ -5,7 +5,7 @@ import {
   Navigation, Upload, X, Clock, Shield, Info,
   ChevronDown, LogIn
 } from 'lucide-react';
-import { submitComplaint, getAllDepartments } from '../../../services/api.jsx';
+import { submitComplaint, getAllDepartments, uploadComplaintAttachments } from '../../../services/api.jsx';
 
 // ==================== MOCK DATA ====================
 const mockDepartments = [
@@ -35,6 +35,17 @@ const slaGuidelines = [
   }
 ];
 
+const complaintCategories = [
+  { value: 'WATER_SUPPLY', label: 'Water Supply' },
+  { value: 'ROAD_DAMAGE', label: 'Road Damage' },
+  { value: 'ELECTRICITY', label: 'Electricity' },
+  { value: 'DRAINAGE', label: 'Drainage' },
+  { value: 'GARBAGE', label: 'Garbage' },
+  { value: 'OTHER', label: 'Other' }
+];
+
+const priorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+
 const LodgeGrievanceTab = ({ onComplaintSubmitted }) => {
   const navigate = useNavigate();
   const [departments, setDepartments] = useState([]);
@@ -50,6 +61,8 @@ const LodgeGrievanceTab = ({ onComplaintSubmitted }) => {
     title: '',
     description: '',
     departmentId: '',
+    category: 'OTHER',
+    priority: 'MEDIUM',
     latitude: '',
     longitude: ''
   });
@@ -103,12 +116,12 @@ const LodgeGrievanceTab = ({ onComplaintSubmitted }) => {
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     setIsDragging(false);
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/') || f.type === 'application/pdf');
     setUploadedFiles(prev => [...prev, ...files].slice(0, 4));
   }, []);
 
   const handleFileInput = (e) => {
-    const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+    const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/') || f.type === 'application/pdf');
     setUploadedFiles(prev => [...prev, ...files].slice(0, 4));
   };
 
@@ -133,12 +146,15 @@ const LodgeGrievanceTab = ({ onComplaintSubmitted }) => {
     };
 
     try {
-      await submitComplaint(submissionData);
+      const response = await submitComplaint(submissionData);
+      if (uploadedFiles.length > 0) {
+        await uploadComplaintAttachments(response.data.id, uploadedFiles);
+      }
       setStatus('success');
 
       setTimeout(() => {
         setStatus('idle');
-        setFormData({ title: '', description: '', departmentId: '', latitude: '', longitude: '' });
+        setFormData({ title: '', description: '', departmentId: '', category: 'OTHER', priority: 'MEDIUM', latitude: '', longitude: '' });
         setUploadedFiles([]);
         if (onComplaintSubmitted) onComplaintSubmitted();
       }, 2500);
@@ -231,6 +247,41 @@ const LodgeGrievanceTab = ({ onComplaintSubmitted }) => {
               />
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="category"
+                  required
+                  value={formData.category}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none text-slate-700"
+                >
+                  {complaintCategories.map((category) => (
+                    <option key={category.value} value={category.value}>{category.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Priority <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="priority"
+                  required
+                  value={formData.priority}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none text-slate-700"
+                >
+                  {priorities.map((priority) => (
+                    <option key={priority} value={priority}>{priority}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {/* Detailed Description */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">
@@ -305,6 +356,7 @@ const LodgeGrievanceTab = ({ onComplaintSubmitted }) => {
                     Drag and drop images here, or <span className="text-blue-600">browse</span>
                   </p>
                   <p className="text-xs text-slate-400 mt-1">PNG, JPG up to 5MB (max 4 files)</p>
+                  <p className="text-xs text-slate-400">PDF files are also supported.</p>
                 </label>
               </div>
 
@@ -313,11 +365,17 @@ const LodgeGrievanceTab = ({ onComplaintSubmitted }) => {
                 <div className="flex flex-wrap gap-3 mt-4">
                   {uploadedFiles.map((file, index) => (
                     <div key={index} className="relative group">
-                      <img
-                        src={URL.createObjectURL(file)}
-                        alt={`Upload ${index + 1}`}
-                        className="w-20 h-20 object-cover rounded-lg border border-slate-200"
-                      />
+                      {file.type === 'application/pdf' ? (
+                        <div className="w-20 h-20 rounded-lg border border-slate-200 bg-red-50 text-red-700 flex items-center justify-center text-xs font-bold px-2 text-center">
+                          PDF
+                        </div>
+                      ) : (
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Upload ${index + 1}`}
+                          className="w-20 h-20 object-cover rounded-lg border border-slate-200"
+                        />
+                      )}
                       <button
                         type="button"
                         onClick={() => removeFile(index)}

@@ -2,7 +2,6 @@ package org.example.backend.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import tools.jackson.databind.annotation.JsonAppend;
 
 @Entity
 @Table(name = "poll_options")

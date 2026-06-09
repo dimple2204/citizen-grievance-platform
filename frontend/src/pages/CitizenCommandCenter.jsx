@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   AlertTriangle, TrendingUp, CheckCircle2, 
-  FileText, ClipboardList, Building2, MapPin
+  FileText, ClipboardList, Building2, MapPin, XCircle
 } from 'lucide-react';
 import { getCitizenComplaints } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -56,9 +56,18 @@ const CitizenCommandCenter = () => {
     try {
       setLoading(true);
       const response = await getCitizenComplaints(citizenId);
-      setComplaints(response.data || []);
-      if (response.data && response.data.length > 0 && !selectedComplaint) {
-        setSelectedComplaint(response.data[0]);
+      const latestComplaints = response.data || [];
+      setComplaints(latestComplaints);
+
+      if (latestComplaints.length > 0) {
+        setSelectedComplaint((currentSelection) => {
+          if (!currentSelection) {
+            return latestComplaints[0];
+          }
+          return latestComplaints.find((complaint) => complaint.id === currentSelection.id) || latestComplaints[0];
+        });
+      } else {
+        setSelectedComplaint(null);
       }
     } catch (error) {
       console.error("Failed to fetch complaints", error);
@@ -66,16 +75,33 @@ const CitizenCommandCenter = () => {
     } finally {
       setLoading(false);
     }
-  }, [citizenId, selectedComplaint]);
+  }, [citizenId]);
 
   useEffect(() => {
     fetchComplaints();
   }, [fetchComplaints]);
 
+  useEffect(() => {
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') {
+        fetchComplaints();
+      }
+    };
+
+    window.addEventListener('focus', fetchComplaints);
+    document.addEventListener('visibilitychange', refreshOnFocus);
+
+    return () => {
+      window.removeEventListener('focus', fetchComplaints);
+      document.removeEventListener('visibilitychange', refreshOnFocus);
+    };
+  }, [fetchComplaints]);
+
   const stats = {
     civicTrustScore: 87,
     totalFiled: complaints.length,
-    resolved: complaints.filter(c => c.status === 'RESOLVED').length
+    resolved: complaints.filter(c => c.status === 'RESOLVED').length,
+    rejected: complaints.filter(c => c.status === 'REJECTED').length
   };
 
   // ─── Inject portal content into Navbar ──────────────────
@@ -96,8 +122,13 @@ const CitizenCommandCenter = () => {
         <span className="text-white font-bold text-xs">{stats.resolved}</span>
         <span className="text-slate-400 text-[10px]">resolved</span>
       </div>
+      <div className="bg-slate-800/80 border border-slate-700 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
+        <XCircle className="w-3.5 h-3.5 text-red-400" />
+        <span className="text-white font-bold text-xs">{stats.rejected}</span>
+        <span className="text-slate-400 text-[10px]">rejected</span>
+      </div>
     </div>
-  ), [stats.civicTrustScore, stats.totalFiled, stats.resolved]);
+  ), [stats.civicTrustScore, stats.totalFiled, stats.resolved, stats.rejected]);
 
   useEffect(() => {
     if (!loading) {
@@ -156,7 +187,7 @@ const CitizenCommandCenter = () => {
               Welcome back, {citizenName}
             </h2>
             <p className="text-sm text-slate-500 mt-1">
-              You have filed <span className="font-semibold text-slate-700">{stats.totalFiled} grievance{stats.totalFiled !== 1 ? 's' : ''}</span> — <span className="font-semibold text-emerald-600">{stats.resolved} resolved</span>
+              You have filed <span className="font-semibold text-slate-700">{stats.totalFiled} grievance{stats.totalFiled !== 1 ? 's' : ''}</span> — <span className="font-semibold text-emerald-600">{stats.resolved} resolved</span>, <span className="font-semibold text-red-600">{stats.rejected} rejected</span>
             </p>
           </div>
 

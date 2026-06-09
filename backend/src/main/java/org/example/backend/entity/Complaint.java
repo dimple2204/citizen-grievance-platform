@@ -23,6 +23,14 @@ public class Complaint {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    private Category category = Category.OTHER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Priority priority = Priority.MEDIUM;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private Status status = Status.OPEN; // Default status when created
 
     @Column(name = "created_at", updatable = false)
@@ -30,6 +38,15 @@ public class Complaint {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "sla_due_at")
+    private LocalDateTime slaDueAt;
+
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
+
+    @Column(name = "sla_breached")
+    private Boolean slaBreached = false;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "citizen_id", nullable = false)
@@ -57,6 +74,14 @@ public class Complaint {
 
     public enum Status {
         OPEN, IN_PROGRESS, RESOLVED, REJECTED
+    }
+
+    public enum Category {
+        WATER_SUPPLY, ROAD_DAMAGE, ELECTRICITY, DRAINAGE, GARBAGE, OTHER
+    }
+
+    public enum Priority {
+        LOW, MEDIUM, HIGH, CRITICAL
     }
 
     public Long getId() {
@@ -99,6 +124,22 @@ public class Complaint {
         this.longitude = longitude;
     }
 
+    public Category getCategory() {
+        return category;
+    }
+
+    public void setCategory(Category category) {
+        this.category = category;
+    }
+
+    public Priority getPriority() {
+        return priority;
+    }
+
+    public void setPriority(Priority priority) {
+        this.priority = priority;
+    }
+
     public Status getStatus() {
         return status;
     }
@@ -121,6 +162,30 @@ public class Complaint {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public LocalDateTime getSlaDueAt() {
+        return slaDueAt;
+    }
+
+    public void setSlaDueAt(LocalDateTime slaDueAt) {
+        this.slaDueAt = slaDueAt;
+    }
+
+    public LocalDateTime getResolvedAt() {
+        return resolvedAt;
+    }
+
+    public void setResolvedAt(LocalDateTime resolvedAt) {
+        this.resolvedAt = resolvedAt;
+    }
+
+    public Boolean isSlaBreached() {
+        return slaBreached != null && slaBreached;
+    }
+
+    public void setSlaBreached(Boolean slaBreached) {
+        this.slaBreached = slaBreached;
     }
 
     public User getCitizen() {

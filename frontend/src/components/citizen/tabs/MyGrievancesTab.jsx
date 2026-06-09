@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { 
   Clock, CheckCircle2, AlertCircle, Loader2, 
   FileText, Calendar, MapPin, Building2,
-  ChevronRight, Inbox, PlusCircle
+  ChevronRight, Inbox, PlusCircle, XCircle, Download, Star, Send
 } from 'lucide-react';
+import ComplaintHistoryTimeline from '../../shared/ComplaintHistoryTimeline';
+import { submitComplaintRating } from '../../../services/api.jsx';
 
 const MyGrievancesTab = ({ 
   complaints = [], 
@@ -13,6 +15,9 @@ const MyGrievancesTab = ({
   onNavigateToLodge
 }) => {
   const [selected, setSelected] = useState(null);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingFeedback, setRatingFeedback] = useState('');
+  const [ratingStatus, setRatingStatus] = useState('idle');
 
   // Update selected when complaints load or selectedComplaint changes
   useEffect(() => {
@@ -25,7 +30,29 @@ const MyGrievancesTab = ({
 
   const handleSelect = (complaint) => {
     setSelected(complaint);
+    setRatingValue(0);
+    setRatingFeedback('');
+    setRatingStatus('idle');
     if (onSelectComplaint) onSelectComplaint(complaint);
+  };
+
+  const formatEnum = (value) => value ? value.replaceAll('_', ' ') : 'Not set';
+
+  const handleSubmitRating = async () => {
+    if (!selected || ratingValue < 1) return;
+    try {
+      setRatingStatus('submitting');
+      const response = await submitComplaintRating(selected.id, {
+        rating: ratingValue,
+        feedback: ratingFeedback
+      });
+      const updated = { ...selected, rating: response.data };
+      setSelected(updated);
+      if (onSelectComplaint) onSelectComplaint(updated);
+      setRatingStatus('success');
+    } catch (error) {
+      setRatingStatus(error.response?.data || 'Unable to save rating.');
+    }
   };
 
   const getStatusConfig = (status) => {
@@ -58,6 +85,15 @@ const MyGrievancesTab = ({
           borderColor: 'border-emerald-200',
           iconColor: 'text-emerald-500'
         };
+      case 'REJECTED':
+        return {
+          icon: XCircle,
+          label: 'Rejected',
+          bgColor: 'bg-red-50',
+          textColor: 'text-red-700',
+          borderColor: 'border-red-200',
+          iconColor: 'text-red-500'
+        };
       default:
         return {
           icon: Clock,
@@ -73,6 +109,7 @@ const MyGrievancesTab = ({
   const getTimelineStep = (status) => {
     if (status === 'RESOLVED') return 3;
     if (status === 'IN_PROGRESS') return 2;
+    if (status === 'REJECTED') return 3;
     return 1;
   };
 
@@ -192,6 +229,13 @@ const MyGrievancesTab = ({
                   <Building2 className="w-4 h-4" />
                   {selected.departmentName || selected.department?.name || 'Department'}
                 </span>
+                <span>{formatEnum(selected.category)}</span>
+                <span>{selected.priority || 'MEDIUM'} Priority</span>
+                {selected.slaDueAt && (
+                  <span className={selected.slaBreached ? 'text-red-600 font-semibold' : ''}>
+                    SLA due {new Date(selected.slaDueAt).toLocaleDateString('en-IN')}
+                  </span>
+                )}
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4" />
                   {new Date(selected.createdAt).toLocaleDateString('en-IN', { 
@@ -216,7 +260,7 @@ const MyGrievancesTab = ({
                 
                 {/* Progress Fill */}
                 <div 
-                  className="absolute left-4 top-4 w-0.5 bg-emerald-500 rounded-full transition-all duration-500"
+                  className={`absolute left-4 top-4 w-0.5 rounded-full transition-all duration-500 ${selected.status === 'REJECTED' ? 'bg-red-500' : 'bg-emerald-500'}`}
                   style={{ height: `${((getTimelineStep(selected.status) - 1) / 2) * 100}%` }}
                 />
 
@@ -269,7 +313,7 @@ const MyGrievancesTab = ({
                     <div className={`
                       absolute left-0 w-8 h-8 rounded-full flex items-center justify-center shadow-sm transition-all
                       ${getTimelineStep(selected.status) >= 3 
-                        ? 'bg-emerald-500' 
+                        ? selected.status === 'REJECTED' ? 'bg-red-500' : 'bg-emerald-500'
                         : 'bg-white border-2 border-slate-200'
                       }
                     `}>
@@ -277,11 +321,13 @@ const MyGrievancesTab = ({
                     </div>
                     <div>
                       <h3 className={`font-semibold ${getTimelineStep(selected.status) >= 3 ? 'text-slate-800' : 'text-slate-400'}`}>
-                        Resolved
+                        {selected.status === 'REJECTED' ? 'Rejected' : 'Resolved'}
                       </h3>
                       <p className="text-sm text-slate-500">
                         {getTimelineStep(selected.status) >= 3 
-                          ? selected.resolvedAt 
+                          ? selected.status === 'REJECTED'
+                            ? 'The department has rejected this grievance'
+                            : selected.resolvedAt
                             ? new Date(selected.resolvedAt).toLocaleDateString('en-IN', {
                                 day: 'numeric', month: 'short', year: 'numeric'
                               })
@@ -299,6 +345,86 @@ const MyGrievancesTab = ({
             <div className="bg-slate-50 rounded-xl border border-slate-200 p-6">
               <h2 className="text-sm font-semibold text-slate-700 mb-3">Description</h2>
               <p className="text-slate-600 leading-relaxed">{selected.description}</p>
+            </div>
+
+            <div className="mt-6 bg-slate-50 rounded-xl border border-slate-200 p-6">
+              <h2 className="text-sm font-semibold text-slate-700 mb-4">Attachments</h2>
+              {(selected.attachments || []).length === 0 ? (
+                <p className="text-sm text-slate-500">No attachments submitted.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selected.attachments.map((attachment) => (
+                    <a
+                      key={attachment.id}
+                      href={`http://localhost:8081/api${attachment.downloadUrl}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-between gap-3 bg-white border border-slate-200 rounded-lg px-4 py-3 hover:border-blue-300 transition-colors"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-800 truncate">{attachment.originalFileName}</p>
+                        <p className="text-xs text-slate-500">{Math.ceil((attachment.sizeBytes || 0) / 1024)} KB</p>
+                      </div>
+                      <Download className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {selected.status === 'RESOLVED' && (
+              <div className="mt-6 bg-white rounded-xl border border-slate-200 p-6">
+                <h2 className="text-sm font-semibold text-slate-700 mb-4">Satisfaction Rating</h2>
+                {selected.rating ? (
+                  <div className="bg-emerald-50 border border-emerald-100 rounded-lg p-4">
+                    <div className="flex items-center gap-1 mb-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star key={star} className={`w-5 h-5 ${star <= selected.rating.rating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                      ))}
+                    </div>
+                    <p className="text-sm text-emerald-700 font-medium">Thank you for rating this resolution.</p>
+                    {selected.rating.feedback && <p className="text-sm text-slate-600 mt-2">{selected.rating.feedback}</p>}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button key={star} type="button" onClick={() => setRatingValue(star)} className="p-1">
+                          <Star className={`w-6 h-6 ${star <= ratingValue ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}`} />
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={ratingFeedback}
+                      onChange={(event) => setRatingFeedback(event.target.value)}
+                      rows="3"
+                      placeholder="Optional feedback for the department..."
+                      className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-600 resize-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSubmitRating}
+                      disabled={ratingStatus === 'submitting' || ratingValue < 1}
+                      className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg text-sm font-bold disabled:opacity-60"
+                    >
+                      {ratingStatus === 'submitting' ? 'Saving...' : 'Submit Rating'}
+                      <Send className="w-4 h-4" />
+                    </button>
+                    {ratingStatus === 'success' && <p className="text-sm font-medium text-emerald-700">Rating submitted successfully.</p>}
+                    {ratingStatus !== 'idle' && ratingStatus !== 'submitting' && ratingStatus !== 'success' && (
+                      <p className="text-sm font-medium text-red-700">{ratingStatus}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="mt-6 bg-slate-50 rounded-xl border border-slate-200 p-6">
+              <h2 className="text-sm font-semibold text-slate-700 mb-4">History</h2>
+              <ComplaintHistoryTimeline
+                history={selected.history || []}
+                emptyText="No officer updates have been posted yet."
+              />
             </div>
           </div>
         ) : (
