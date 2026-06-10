@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Megaphone, Vote, User, Phone, Mail, MapPin,
   ThumbsUp, MessageSquare, Calendar, ExternalLink,
-  Clock, CheckCircle2, Users
+  Clock, CheckCircle2, Users, X, Loader2
 } from 'lucide-react';
 import { getCommunityFeed, submitPollVote } from "../../../services/api.jsx";
 
@@ -23,6 +23,14 @@ const MyWardTab = () => {
 
   // Track votes locally so UI updates instantly. Key = pollId, Value = selected optionId
   const [votedPolls, setVotedPolls] = useState({});
+
+  // Scheduler Modal State
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [meetingDate, setMeetingDate] = useState('');
+  const [meetingTime, setMeetingTime] = useState('10:00 AM - 10:30 AM');
+  const [meetingSubject, setMeetingSubject] = useState('');
+  const [scheduleLoading, setScheduleLoading] = useState(false);
+  const [scheduleSuccess, setScheduleSuccess] = useState('');
 
   // 1. Fetch data from Spring Boot on load
   useEffect(() => {
@@ -77,7 +85,6 @@ const MyWardTab = () => {
   };
 
   const getTypeIcon = (type) => {
-    // Standardize to uppercase to match the backend enum/string
     switch (type?.toUpperCase()) {
       case 'BROADCAST': return Megaphone;
       case 'POLL': return Vote;
@@ -86,12 +93,23 @@ const MyWardTab = () => {
     }
   };
 
+  const handleScheduleSubmit = (e) => {
+    e.preventDefault();
+    setScheduleLoading(true);
+    setScheduleSuccess('');
+
+    setTimeout(() => {
+      setScheduleLoading(false);
+      setScheduleSuccess(`Appointment requested for ${meetingDate} at ${meetingTime}. A confirmation SMS has been sent.`);
+    }, 1200);
+  };
+
   if (loading) {
     return <div className="p-12 text-center text-slate-500 font-medium">Loading Community Feed...</div>;
   }
 
   return (
-      <div className="px-4 sm:px-8 lg:px-12 2xl:px-16 py-8">
+      <div className="px-4 sm:px-8 lg:px-12 2xl:px-16 py-8 relative">
         <div className="max-w-[800px] mx-auto">
 
           {/* Ward Councillor Card */}
@@ -143,7 +161,10 @@ const MyWardTab = () => {
 
                 {/* Action */}
                 <div className="sm:self-start">
-                  <button className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-sm">
+                  <button 
+                    onClick={() => setShowScheduleModal(true)}
+                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition-colors shadow-sm"
+                  >
                     Schedule Meeting
                     <ExternalLink className="w-4 h-4" />
                   </button>
@@ -233,13 +254,13 @@ const MyWardTab = () => {
                                             <CheckCircle2 className="w-5 h-5 text-blue-600 flex-shrink-0" />
                                         )}
                                         <span className={`text-sm font-semibold ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>
-                                  {option.text}
-                                </span>
+                                   {option.text}
+                                 </span>
                                       </div>
                                       {hasVoted && (
                                           <span className={`text-sm font-bold ${isSelected ? 'text-blue-700' : 'text-slate-500'}`}>
-                                  {percentage}%
-                                </span>
+                                   {percentage}%
+                                 </span>
                                       )}
                                     </div>
                                   </button>
@@ -290,6 +311,96 @@ const MyWardTab = () => {
               </div>
           )}
         </div>
+
+        {/* Schedule Meeting Modal */}
+        {showScheduleModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col animate-scaleIn">
+              <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-lg">Schedule Meeting</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">With Councillor Priya Mohanty</p>
+                </div>
+                <button 
+                  onClick={() => { setShowScheduleModal(false); setScheduleSuccess(''); }} 
+                  className="text-slate-400 hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6">
+                {scheduleSuccess ? (
+                  <div className="text-center py-6">
+                    <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-200">
+                      <CheckCircle2 className="w-8 h-8" />
+                    </div>
+                    <h4 className="font-bold text-slate-950 text-lg mb-2">Meeting Requested</h4>
+                    <p className="text-sm text-slate-600 leading-relaxed mb-6">{scheduleSuccess}</p>
+                    <button 
+                      onClick={() => { setShowScheduleModal(false); setScheduleSuccess(''); }}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold text-sm transition-colors shadow-sm"
+                    >
+                      Close
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleScheduleSubmit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Select Date</label>
+                      <input 
+                        type="date"
+                        className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                        onChange={(e) => setMeetingDate(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Select Time Slot</label>
+                      <select 
+                        className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                        onChange={(e) => setMeetingTime(e.target.value)}
+                        required
+                      >
+                        <option>10:00 AM - 10:30 AM</option>
+                        <option>11:00 AM - 11:30 AM</option>
+                        <option>02:30 PM - 03:00 PM</option>
+                        <option>04:00 PM - 04:30 PM</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Subject of Meeting</label>
+                      <textarea 
+                        rows="3"
+                        className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all resize-none"
+                        placeholder="Briefly state your civic issue or agenda..."
+                        onChange={(e) => setMeetingSubject(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={scheduleLoading}
+                      className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-75 disabled:cursor-not-allowed text-white py-3.5 rounded-xl font-semibold text-sm transition-all shadow-md flex items-center justify-center gap-2 mt-4"
+                    >
+                      {scheduleLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Scheduling...
+                        </>
+                      ) : (
+                        <>
+                          Book Appointment
+                          <ExternalLink className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  </form>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
   );
 };

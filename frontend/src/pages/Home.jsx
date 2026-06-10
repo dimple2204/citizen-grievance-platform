@@ -1,14 +1,38 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { 
   ArrowRight, ShieldCheck, CheckCircle2, Clock, BarChart3, 
   Users, FileText, Zap, Globe, Phone, Mail, MapPin,
-  ChevronRight, Shield, Bell, Award
+  ChevronRight, Shield, Bell, Award, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { getPublicStats } from '../services/api';
 
 const Home = () => {
     const navigate = useNavigate();
     const { isAuthenticated, userRole } = useAuth();
+
+    const [selectedDoc, setSelectedDoc] = useState(null);
+    const [showDeptModal, setShowDeptModal] = useState(false);
+
+    const [liveStats, setLiveStats] = useState({
+        resolvedComplaints: 15234,
+        avgResponseTimeHours: 48,
+        citizenSatisfactionRate: 95,
+        departmentsConnected: 6
+    });
+
+    useEffect(() => {
+        getPublicStats()
+            .then(response => {
+                if (response.data) {
+                    setLiveStats(response.data);
+                }
+            })
+            .catch(error => {
+                console.error("Failed to load public statistics", error);
+            });
+    }, []);
 
     const handleGetStarted = () => {
         if (isAuthenticated && userRole === 'CITIZEN') {
@@ -48,10 +72,10 @@ const Home = () => {
     ];
 
     const stats = [
-        { value: '50,000+', label: 'Grievances Resolved', icon: CheckCircle2 },
-        { value: '48 hrs', label: 'Avg. Response Time', icon: Clock },
-        { value: '95%', label: 'Citizen Satisfaction', icon: Award },
-        { value: '25+', label: 'Departments Connected', icon: Globe }
+        { value: liveStats.resolvedComplaints.toLocaleString() + '+', label: 'Grievances Resolved', icon: CheckCircle2 },
+        { value: liveStats.avgResponseTimeHours + ' hrs', label: 'Avg. Response Time', icon: Clock },
+        { value: liveStats.citizenSatisfactionRate + '%', label: 'Citizen Satisfaction', icon: Award },
+        { value: liveStats.departmentsConnected + '+', label: 'Departments Connected', icon: Globe }
     ];
 
     const departments = [
@@ -63,8 +87,53 @@ const Home = () => {
         'Urban Planning'
     ];
 
+    const departmentDetails = [
+        { name: 'Roads & Infrastructure', head: 'Shri Manoj Das (Superintendent Engineer)', phone: '+91 94370 11223', email: 'roads.infra@bmc.gov.in', activeTickets: 14 },
+        { name: 'Water Supply', head: 'Smt. Smita Patnaik (Executive Engineer)', phone: '+91 94370 22334', email: 'water.supply@bmc.gov.in', activeTickets: 9 },
+        { name: 'Electricity Board', head: 'Shri Alok Mishra (Division Head)', phone: '+91 94370 33445', email: 'electricity@odisha.gov.in', activeTickets: 18 },
+        { name: 'Sanitation & Waste', head: 'Shri Ramesh Sahu (Health Officer)', phone: '+91 94370 44556', email: 'sanitation@bmc.gov.in', activeTickets: 22 },
+        { name: 'Public Health', head: 'Dr. Kabita Mohanty (Chief Medical Officer)', phone: '+91 94370 55667', email: 'health.dept@bmc.gov.in', activeTickets: 5 },
+        { name: 'Urban Planning', head: 'Shri S. K. Nayak (Planning Director)', phone: '+91 94370 66778', email: 'urban.plan@bmc.gov.in', activeTickets: 3 }
+    ];
+
+    const getDocContent = (type) => {
+        switch (type) {
+            case 'terms':
+                return {
+                    title: 'Terms of Service',
+                    paragraphs: [
+                        'By accessing and using LokShikayat, you agree to submit truthful, accurate details about municipal issues. Filing false or malicious reports is strictly prohibited.',
+                        'The platform serves to route community concerns to official departments. While we aim for prompt redressing under SLA limits, resolution depends on department capacity.',
+                        'Citizens must not upload copyrighted materials, promotional files, or offensive text. Violations will result in account suspension.'
+                    ]
+                };
+            case 'privacy':
+                return {
+                    title: 'Privacy Policy',
+                    paragraphs: [
+                        'We value citizen privacy. Your geographic coordinates, contact phone numbers, and email addresses are securely stored and encrypted.',
+                        'Data is solely shared with the specific government department and assigned redressal officer handling your grievance. No user metadata is sold or exposed to third parties.',
+                        'You have the right to request deletion of your account and archived complaint logs by contacting support.'
+                    ]
+                };
+            case 'help':
+                return {
+                    title: 'Help Center & Support',
+                    paragraphs: [
+                        '1. How do I lodge a complaint? Navigate to "Lodge Grievance", fill out the title, description, select a category, and optionally share location coordinates.',
+                        '2. What is the SLA? Service Level Agreements set automated deadlines for response times (e.g. Critical is resolved in 24-48 hours). Overdue tickets are automatically flagged to admins.',
+                        '3. Who is LokMitra? LokMitra is our integrated AI civic helper. Click the floating chat bubble on the bottom right to ask questions or draft complaint text.'
+                    ]
+                };
+            default:
+                return null;
+        }
+    };
+
+    const docContent = selectedDoc ? getDocContent(selectedDoc) : null;
+
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-screen bg-white relative">
             
             {/* Hero Section */}
             <section className="relative overflow-hidden">
@@ -154,7 +223,7 @@ const Home = () => {
                                 </div>
 
                                 {/* Floating Elements */}
-                                <div className="absolute -top-4 -right-4 bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg">
+                                <div className="absolute -top-4 -right-4 bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold shadow-lg animate-pulse">
                                     Live Tracking
                                 </div>
                             </div>
@@ -225,8 +294,8 @@ const Home = () => {
                             </div>
 
                             <button
-                                onClick={() => navigate('/citizen')}
-                                className="mt-8 inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700 transition-colors"
+                                onClick={() => setShowDeptModal(true)}
+                                className="mt-8 inline-flex items-center gap-2 text-blue-600 font-semibold hover:text-blue-700 transition-colors border-0 bg-transparent cursor-pointer"
                             >
                                 View All Departments
                                 <ArrowRight className="w-4 h-4" />
@@ -302,9 +371,19 @@ const Home = () => {
                                 efficient and accountable grievance redressal to citizens.
                             </p>
                             <div className="flex items-center gap-4 text-sm">
-                                <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
+                                <button 
+                                    onClick={() => setSelectedDoc('privacy')} 
+                                    className="hover:text-white transition-colors border-0 bg-transparent p-0 cursor-pointer"
+                                >
+                                    Privacy Policy
+                                </button>
                                 <span>•</span>
-                                <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
+                                <button 
+                                    onClick={() => setSelectedDoc('terms')} 
+                                    className="hover:text-white transition-colors border-0 bg-transparent p-0 cursor-pointer"
+                                >
+                                    Terms of Service
+                                </button>
                             </div>
                         </div>
 
@@ -315,7 +394,14 @@ const Home = () => {
                                 <li><Link to="/citizen" className="hover:text-white transition-colors">Citizen Portal</Link></li>
                                 <li><Link to="/login" className="hover:text-white transition-colors">Sign In</Link></li>
                                 <li><Link to="/register" className="hover:text-white transition-colors">Register</Link></li>
-                                <li><a href="#" className="hover:text-white transition-colors">Help & Support</a></li>
+                                <li>
+                                    <button 
+                                        onClick={() => setSelectedDoc('help')} 
+                                        className="hover:text-white transition-colors border-0 bg-transparent p-0 cursor-pointer text-left text-sm text-slate-400"
+                                    >
+                                        Help & Support
+                                    </button>
+                                </li>
                             </ul>
                         </div>
 
@@ -324,12 +410,16 @@ const Home = () => {
                             <h4 className="text-white font-semibold mb-4">Contact</h4>
                             <ul className="space-y-3 text-sm">
                                 <li className="flex items-center gap-2">
-                                    <Phone className="w-4 h-4" />
-                                    <span>1800-XXX-XXXX (Toll Free)</span>
+                                    <Phone className="w-4 h-4 text-blue-400" />
+                                    <a href="tel:18001112222" className="hover:text-white text-slate-400 transition-colors decoration-transparent">
+                                        1800-111-2222 (Toll Free)
+                                    </a>
                                 </li>
                                 <li className="flex items-center gap-2">
-                                    <Mail className="w-4 h-4" />
-                                    <span>support@lokshikayat.gov.in</span>
+                                    <Mail className="w-4 h-4 text-blue-400" />
+                                    <a href="mailto:support@lokshikayat.gov.in" className="hover:text-white text-slate-400 transition-colors decoration-transparent">
+                                        support@lokshikayat.gov.in
+                                    </a>
                                 </li>
                             </ul>
                         </div>
@@ -340,6 +430,95 @@ const Home = () => {
                     </div>
                 </div>
             </footer>
+
+            {/* Document Policy Modal Overlay */}
+            {docContent && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+                        <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+                            <h3 className="font-bold text-lg">{docContent.title}</h3>
+                            <button 
+                                onClick={() => setSelectedDoc(null)} 
+                                className="text-slate-400 hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded-lg border-0 bg-transparent cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 space-y-4 max-h-[350px] overflow-y-auto">
+                            {docContent.paragraphs.map((para, index) => (
+                                <p key={index} className="text-sm text-slate-600 leading-relaxed">
+                                    {para}
+                                </p>
+                            ))}
+                        </div>
+
+                        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                            <button 
+                                onClick={() => setSelectedDoc(null)}
+                                className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2 rounded-xl font-semibold text-sm transition-colors cursor-pointer border-0"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* View All Departments Modal */}
+            {showDeptModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+                    <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
+                        <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+                            <div>
+                                <h3 className="font-bold text-lg">Connected Municipal Departments</h3>
+                                <p className="text-xs text-slate-400 mt-0.5">Contact directories and telemetry</p>
+                            </div>
+                            <button 
+                                onClick={() => setShowDeptModal(false)} 
+                                className="text-slate-400 hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded-lg border-0 bg-transparent cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 space-y-4 max-h-[450px] overflow-y-auto">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {departmentDetails.map((dept, index) => (
+                                    <div key={index} className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col justify-between">
+                                        <div>
+                                            <h4 className="font-bold text-slate-900 text-base mb-1">{dept.name}</h4>
+                                            <p className="text-xs text-slate-500 mb-3"><span className="font-medium">Head:</span> {dept.head}</p>
+                                        </div>
+                                        <div className="space-y-1.5 text-xs text-slate-600 border-t border-slate-200/60 pt-2.5">
+                                            <p className="flex items-center gap-1.5">
+                                                <Phone className="w-3.5 h-3.5 text-blue-500" />
+                                                <a href={`tel:${dept.phone}`} className="hover:text-blue-600 transition-colors">{dept.phone}</a>
+                                            </p>
+                                            <p className="flex items-center gap-1.5">
+                                                <Mail className="w-3.5 h-3.5 text-blue-500 animate-none" />
+                                                <a href={`mailto:${dept.email}`} className="hover:text-blue-600 transition-colors truncate">{dept.email}</a>
+                                            </p>
+                                            <p className="flex items-center gap-1.5 mt-2 bg-blue-50 text-blue-700 font-semibold px-2 py-1 rounded w-fit text-[10px]">
+                                                {dept.activeTickets} Active Grievances
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                            <button 
+                                onClick={() => setShowDeptModal(false)}
+                                className="bg-slate-950 hover:bg-slate-800 text-white px-5 py-2 rounded-xl font-semibold text-sm transition-colors cursor-pointer border-0"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -30,6 +30,9 @@ apiClient.interceptors.request.use(
 export const registerUser = (userData) => apiClient.post("/users/register", userData)
 export const loginUser = (credentials) => apiClient.post("/users/login", credentials)
 
+// ---- PUBLIC ENDPOINTS ----
+export const getPublicStats = () => apiClient.get("/public/stats");
+
 // ---- DEPARTMENT ENDPOINTS ----
 export const getAllDepartments = () => apiClient.get("/departments/all")
 export const getMyDepartments = () => apiClient.get("/departments/mine")

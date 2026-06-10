@@ -33,8 +33,8 @@ public class SecurityConfig {
 
                 // 2. Set the rules for the endpoints
                 .authorizeHttpRequests(auth -> auth
-                        // OPEN DOORS: Anyone can register or login
-                        .requestMatchers("/api/users/register", "/api/users/login").permitAll()
+                        // OPEN DOORS: Anyone can register, login, or view public stats
+                        .requestMatchers("/api/users/register", "/api/users/login", "/api/public/**").permitAll()
 
                         // ADMIN ONLY: System administration and analytics
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
